@@ -56,7 +56,7 @@ def admin_panel():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
 
 @app.route('/block-ip', methods=['POST'])
 def block_ip_route():

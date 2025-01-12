@@ -53,7 +53,7 @@ def admin_panel():
     return render_template('admin_panel.html')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
 
 # In-memory storage for IP blocking/whitelisting and logs
 blocked_ips = set()  # Set to store blocked IPs
