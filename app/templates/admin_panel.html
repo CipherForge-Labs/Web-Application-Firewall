@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Web Application Firewall</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+    <header>
+        <h1>Web Application Firewall - Admin Panel</h1>
+    </header>
+
+    <div class="container">
+
+        <!-- Admin Login Section (only visible if not logged in) -->
+        {% if not logged_in %}
+        <form action="/login" method="POST">
+            <h2>Login to Admin Panel</h2>
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <input type="submit" value="Login">
+        </form>
+        {% else %}
+        
+        <!-- Main Admin Panel Section (visible after login) -->
+        <div class="admin-dashboard">
+            <h2>Welcome to the Admin Panel</h2>
+
+            <div class="admin-actions">
+                <h3>Manage Firewall</h3>
+                <p>Here you can manage firewall rules, view logs, and more:</p>
+                
+                <!-- IP Blocking/Whitelisting Section -->
+                <section class="ip-management">
+                    <h4>Block IP Address</h4>
+                    <form action="/block_ip" method="POST">
+                        <input type="text" name="ip_address" placeholder="Enter IP Address" required>
+                        <input type="submit" value="Block IP">
+                    </form>
+
+                    <h4>Whitelist IP Address</h4>
+                    <form action="/whitelist_ip" method="POST">
+                        <input type="text" name="ip_address" placeholder="Enter IP Address" required>
+                        <input type="submit" value="Whitelist IP">
+                    </form>
+                </section>
+
+                <!-- Logs Viewing Section -->
+                <section class="logs-management">
+                    <h4>View Logs</h4>
+                    <a href="/logs">View Firewall Logs</a>
+                </section>
+
+                <!-- Rate Limiting Section -->
+                <section class="rate-limiting">
+                    <h4>Rate Limiting Settings</h4>
+                    <form action="/set_rate_limit" method="POST">
+                        <input type="number" name="rate_limit" placeholder="Requests per minute" required>
+                        <input type="submit" value="Set Rate Limit">
+                    </form>
+                </section>
+            </div>
+
+            <!-- Onboarding Setup Reminder (if the setup is incomplete) -->
+            {% if setup_incomplete %}
+            <div class="alert alert-info">
+                <strong>Notice:</strong> Please complete your initial setup by setting up the password.
+                <a href="/onboarding">Go to Setup</a>
+            </div>
+            {% endif %}
+        </div>
+
+        {% endif %}
+    </div>
+
+    <footer>
+        <p>Made with ❤️ by CipherForge Labs</p>
+    </footer>
+
+</body>
+</html>
