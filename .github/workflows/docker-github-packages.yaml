@@ -1,0 +1,32 @@
+name: Publish Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out the repository
+      uses: actions/checkout@v4
+
+    - name: Log in to GitHub Packages
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+    - name: Build and Tag Docker Image
+      env:
+        IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/my-docker-image
+      run: |
+        docker build -t $IMAGE_NAME:latest .
+        docker tag $IMAGE_NAME:latest $IMAGE_NAME:$(date +%Y%m%d%H%M%S)
+
+    - name: Push Docker Image to GitHub Packages
+      env:
+        IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/my-docker-image
+      run: |
+        docker push $IMAGE_NAME:latest
+        docker push $IMAGE_NAME:$(date +%Y%m%d%H%M%S)
