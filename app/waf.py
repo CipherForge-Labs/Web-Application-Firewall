@@ -1,119 +1,117 @@
+"""
+Web Application Firewall (WAF) module.
+This module handles requests and applies basic filtering rules.
+"""
+
 import json
-import re
-from datetime import datetime
+from flask import request
+import os
 
-# Load rules from JSON files
+# File to store WAF rules
+RULES_FILE = "rules.json"
+
+# Function to load rules from the rules file
 def load_rules():
-    try:
-        with open('waf_rules.json', 'r') as rules_file:
-            return json.load(rules_file)
-    except FileNotFoundError:
-        # If the file doesn't exist, return empty rules
-        return {"blocked_ips": [], "whitelisted_ips": []}
+    """
+    Load WAF rules from a JSON file.
+    Returns an empty list if the file does not exist.
+    """
+    if os.path.exists(RULES_FILE):
+        with open(RULES_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return []
 
-# Save rules to JSON file
+# Function to save rules to a JSON file
 def save_rules(rules):
-    with open('waf_rules.json', 'w') as rules_file:
-        json.dump(rules, rules_file, indent=4)
+    """
+    Save WAF rules to a JSON file.
+    """
+    with open(RULES_FILE, "w", encoding="utf-8") as f:
+        json.dump(rules, f, indent=4)
 
-# Load logs from JSON file
-def load_logs():
-    try:
-        with open('waf_logs.json', 'r') as log_file:
-            return json.load(log_file)
-    except FileNotFoundError:
-        # If the file doesn't exist, return an empty list
-        return []
-
-# Save logs to JSON file
-def save_logs(logs):
-    with open('waf_logs.json', 'w') as log_file:
-        json.dump(logs, log_file, indent=4)
-
-# Log activities
-def log_activity(ip_address, action, details):
-    logs = load_logs()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    log_data = {
-        "timestamp": timestamp,
-        "ip_address": ip_address,
-        "action": action,
-        "details": details
-    }
-    logs.append(log_data)
-    save_logs(logs)
-
-# Check for SQL Injection attack
-def detect_sql_injection(request_data):
-    sql_patterns = [
-        r"(\b(select|insert|delete|update|drop|create|alter|grant|revoke)\b)",
-        r"(--|\bunion\b|\bselect\b|\binsert\b|\bdrop\b|\bupdate\b|\bdelete\b|\bcreate\b|\bshow\b)"
-    ]
-    for pattern in sql_patterns:
-        if re.search(pattern, request_data, re.IGNORECASE):
-            return True
-    return False
-
-# Check for Cross-Site Scripting (XSS) attack
-def detect_xss(request_data):
-    xss_patterns = [
-        r"<script.*?>.*?</script.*?>",  # Basic XSS patterns
-        r"(<img.*?src\s*=\s*['\"]*.*?javascript:.*?)"
-    ]
-    for pattern in xss_patterns:
-        if re.search(pattern, request_data, re.IGNORECASE):
-            return True
-    return False
-
-# Block an IP if it is detected as malicious
+# Function to block an IP address
 def block_ip(ip_address):
+    """
+    Block an IP address by adding it to the rules.
+    """
     rules = load_rules()
-    if ip_address not in rules["blocked_ips"]:
-        rules["blocked_ips"].append(ip_address)
-        save_rules(rules)
-        log_activity(ip_address, "Blocked", "IP detected for malicious activity")
+    rules.append({"ip": ip_address, "action": "block"})
+    save_rules(rules)
 
-# Whitelist an IP
-def whitelist_ip(ip_address):
+# Function to unblock an IP address
+def unblock_ip(ip_address):
+    """
+    Unblock an IP address by removing it from the rules.
+    """
     rules = load_rules()
-    if ip_address in rules["blocked_ips"]:
-        rules["blocked_ips"].remove(ip_address)
-    if ip_address not in rules["whitelisted_ips"]:
-        rules["whitelisted_ips"].append(ip_address)
-        save_rules(rules)
-        log_activity(ip_address, "Whitelisted", "IP manually whitelisted by admin")
+    rules = [rule for rule in rules if rule["ip"] != ip_address]
+    save_rules(rules)
 
-# Main WAF detection function
-def waf_filter(request_data, ip_address):
+# Function to analyze requests and detect malicious behavior
+def analyze_request(request_data):
+    """
+    Analyze a request and determine if it is malicious.
+    For simplicity, this function detects SQL Injection and XSS.
+    """
+    if "DROP TABLE" in request_data or "SELECT * FROM" in request_data:
+        return "SQL Injection detected"
+    if "<script>" in request_data or "</script>" in request_data:
+        return "XSS detected"
+    return "Request is safe"
+
+# Function to handle requests
+def handle_request():
+    """
+    Handle incoming requests and apply WAF rules.
+    This function checks the request data and applies filtering rules.
+    """
+    ip_address = request.remote_addr
+    request_data = request.data.decode("utf-8")
+    
+    # Check if the IP is blocked
     rules = load_rules()
+    for rule in rules:
+        if rule["ip"] == ip_address and rule["action"] == "block":
+            return "Access denied: Your IP is blocked."
 
-    # Check if the IP is whitelisted or blocked
-    if ip_address in rules["whitelisted_ips"]:
-        return "IP is whitelisted, no action needed."
-    elif ip_address in rules["blocked_ips"]:
-        return "IP is blocked, request denied."
+    # Analyze the request data for potential threats
+    result = analyze_request(request_data)
 
-    # Check for SQL Injection
-    if detect_sql_injection(request_data):
-        log_activity(ip_address, "Blocked", "SQL Injection detected")
+    # If the request is safe, allow it; otherwise, block it
+    if result == "Request is safe":
+        return "Request allowed"
+    else:
         block_ip(ip_address)
-        return "SQL Injection detected, request blocked."
+        return f"Access denied: {result}"
 
-    # Check for XSS
-    if detect_xss(request_data):
-        log_activity(ip_address, "Blocked", "XSS Attack detected")
-        block_ip(ip_address)
-        return "XSS Attack detected, request blocked."
+# Function to handle login request
+def login(request_data):
+    """
+    Handle login requests.
+    Verifies the admin credentials and returns a message.
+    """
+    password = request_data.get("password")
+    if password == "admin123":  # For simplicity, using a hardcoded password
+        return "Login successful"
+    return "Invalid password"
 
-    # If no attacks are detected, allow the request
-    return "Request allowed."
+# Example route: login route
+@app.route("/login", methods=["POST"])
+def login_route():
+    """
+    Endpoint for admin login.
+    """
+    data = request.get_json()
+    return login(data)
 
-# Example usage of the WAF filter
+# Example route: handle requests
+@app.route("/request", methods=["POST"])
+def request_route():
+    """
+    Endpoint for handling requests.
+    """
+    data = request.get_json()
+    return handle_request()
+
 if __name__ == "__main__":
-    # Sample incoming request data
-    request_data = "<script>alert('XSS')</script>"
-    ip_address = "192.168.1.1"
-
-    result = waf_filter(request_data, ip_address)
-    print(result)  # This will print the result of the request filter (blocked/allowed)
-
+    app.run(debug=True)

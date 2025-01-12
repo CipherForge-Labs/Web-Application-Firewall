@@ -1,84 +1,81 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import json
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # Secret key for session management
 
-# Dummy initial data for the example
-# In a real application, use a database for storing users, logs, and other data
-users = {
-    "admin": generate_password_hash("admin123")  # Replace with the real admin password
-}
+# Password storage location
+PASSWORD_FILE = "admin_password.txt"
 
-blocked_ips = set()  # Example: Set to store blocked IPs
-whitelisted_ips = set()  # Example: Set to store whitelisted IPs
-logs = []  # List to store logs (usually a database)
+# Check if the password file exists; if not, create one
+if not os.path.exists(PASSWORD_FILE):
+    with open(PASSWORD_FILE, "w") as f:
+        f.write(generate_password_hash("admin123"))
 
-@app.route('/')
-def index():
-    return render_template('login.html')
+# Function to load the admin password hash from the file
+def get_admin_password():
+    with open(PASSWORD_FILE, "r") as f:
+        return f.read().strip()
 
-@app.route('/login', methods=['GET', 'POST'])
+# Function to verify password
+def verify_password(password):
+    return check_password_hash(get_admin_password(), password)
+
+# Load WAF rules from a JSON file
+def load_rules():
+    if os.path.exists("rules.json"):
+        with open("rules.json", "r") as f:
+            return json.load(f)
+    return []
+
+# Save WAF rules to a JSON file
+def save_rules(rules):
+    with open("rules.json", "w") as f:
+        json.dump(rules, f, indent=4)
+
+# Function to add IP to the blacklist
+def block_ip(ip_address):
+    rules = load_rules()
+    rules.append({"ip": ip_address, "action": "block"})
+    save_rules(rules)
+
+# Function to unblock an IP
+def unblock_ip(ip_address):
+    rules = load_rules()
+    rules = [rule for rule in rules if rule["ip"] != ip_address]
+    save_rules(rules)
+
+# Endpoint for blocking IP
+@app.route("/block_ip", methods=["POST"])
+def block_ip_endpoint():
+    ip_address = request.form.get("ip_address")
+    if ip_address:
+        block_ip(ip_address)
+        return jsonify({"message": f"IP {ip_address} blocked successfully!"}), 200
+    return jsonify({"error": "IP address is required!"}), 400
+
+# Endpoint for unblocking IP
+@app.route("/unblock_ip", methods=["POST"])
+def unblock_ip_endpoint():
+    ip_address = request.form.get("ip_address")
+    if ip_address:
+        unblock_ip(ip_address)
+        return jsonify({"message": f"IP {ip_address} unblocked successfully!"}), 200
+    return jsonify({"error": "IP address is required!"}), 400
+
+# Endpoint for login (admin)
+@app.route("/login", methods=["POST"])
 def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        # Check if the username exists and the password is correct
-        if username in users and check_password_hash(users[username], password):
-            session['username'] = username
-            return redirect(url_for('admin_panel'))
-        else:
-            return render_template('login.html', error="Invalid username or password")
-    return render_template('login.html')
+    password = request.form.get("password")
+    if verify_password(password):
+        return jsonify({"message": "Login successful!"}), 200
+    return jsonify({"error": "Invalid password!"}), 401
 
-@app.route('/admin_panel')
-def admin_panel():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('admin_panel.html', logged_in=True, setup_incomplete=False)
+# Default route
+@app.route("/")
+def home():
+    return "Welcome to the Web Application Firewall!"
 
-@app.route('/onboarding', methods=['GET', 'POST'])
-def onboarding():
-    if request.method == 'POST':
-        password = request.form['password']
-        confirm_password = request.form['confirm_password']
-        if password == confirm_password:
-            # Store the password (in reality, store this in a secure database)
-            users['admin'] = generate_password_hash(password)
-            return redirect(url_for('login'))
-        else:
-            return render_template('onboarding.html', error="Passwords do not match")
-    return render_template('onboarding.html')
-
-@app.route('/block_ip', methods=['POST'])
-def block_ip():
-    ip_address = request.form['ip_address']
-    blocked_ips.add(ip_address)
-    logs.append({'timestamp': '2025-01-12', 'ip_address': ip_address, 'action': 'Blocked', 'details': 'IP Blocked by Admin'})
-    return redirect(url_for('admin_panel'))
-
-@app.route('/whitelist_ip', methods=['POST'])
-def whitelist_ip():
-    ip_address = request.form['ip_address']
-    if ip_address in blocked_ips:
-        blocked_ips.remove(ip_address)
-    whitelisted_ips.add(ip_address)
-    logs.append({'timestamp': '2025-01-12', 'ip_address': ip_address, 'action': 'Whitelisted', 'details': 'IP Whitelisted by Admin'})
-    return redirect(url_for('admin_panel'))
-
-@app.route('/logs')
-def view_logs():
-    if 'username' not in session:
-        return redirect(url_for('login'))
-    return render_template('logs.html', logs=logs)
-
-@app.route('/set_rate_limit', methods=['POST'])
-def set_rate_limit():
-    rate_limit = request.form['rate_limit']
-    # Here you can implement rate-limiting logic based on `rate_limit`
-    logs.append({'timestamp': '2025-01-12', 'ip_address': 'N/A', 'action': 'Rate Limit Set', 'details': f'Set to {rate_limit} requests per minute'})
-    return redirect(url_for('admin_panel'))
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
