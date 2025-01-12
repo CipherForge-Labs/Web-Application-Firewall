@@ -19,14 +19,16 @@ jobs:
 
     - name: Build and Tag Docker Image
       env:
-        IMAGE_NAME: ghcr.io/${{ github.repository_owner | lower }}/my-docker-image
+        IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/my-docker-image
       run: |
-        docker build -t $IMAGE_NAME:latest .
-        docker tag $IMAGE_NAME:latest $IMAGE_NAME:$(date +%Y%m%d%H%M%S)
+        LOWERCASE_IMAGE_NAME=$(echo $IMAGE_NAME | tr '[:upper:]' '[:lower:]')
+        docker build -t $LOWERCASE_IMAGE_NAME:latest .
+        docker tag $LOWERCASE_IMAGE_NAME:latest $LOWERCASE_IMAGE_NAME:$(date +%Y%m%d%H%M%S)
 
     - name: Push Docker Image to GitHub Packages
       env:
-        IMAGE_NAME: ghcr.io/${{ github.repository_owner | lower }}/my-docker-image
+        IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/my-docker-image
       run: |
-        docker push $IMAGE_NAME:latest
-        docker push $IMAGE_NAME:$(date +%Y%m%d%H%M%S)
+        LOWERCASE_IMAGE_NAME=$(echo $IMAGE_NAME | tr '[:upper:]' '[:lower:]')
+        docker push $LOWERCASE_IMAGE_NAME:latest
+        docker push $LOWERCASE_IMAGE_NAME:$(date +%Y%m%d%H%M%S)
