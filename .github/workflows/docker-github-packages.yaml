@@ -32,5 +32,5 @@ jobs:
     - name: Push the Docker image
       run: |
         IMAGE_NAME=my-docker-image
-        IMAGE_TAG=$(date +%Y%m%d%H%M%S)  # Use the same tag
+        IMAGE_TAG=$(date +%Y%m%d%H%M%S)  # Use the same tag generated earlier
         docker push ghcr.io/cipherforge-labs/$IMAGE_NAME:$IMAGE_TAG
