@@ -1,66 +1,63 @@
-"""
-This is the initialization file for the Web Application Firewall app.
-It sets up and configures the Flask application.
-"""
+from flask import Flask, session, redirect, url_for, request, render_template
 
-from flask import Flask, render_template, request, redirect, url_for
+app = Flask(__name__)
+app.secret_key = "your_secret_key"
 
-# Initialize Flask application
-flask_app = Flask(__name__)
+# Sample flags for onboarding completion
+setup_complete = False  # Change this to True after onboarding is completed
 
-# Configure the Flask app
-flask_app.config['SECRET_KEY'] = 'your_secret_key'
+@app.route('/')
+def index():
+    """
+    Redirect root URL to /onboarding if setup is not complete.
+    Otherwise, redirect to admin login.
+    """
+    if not setup_complete:
+        return redirect(url_for('onboarding'))
+    return redirect(url_for('admin_login'))
 
-# Example of specific exception handling (replace with your actual logic)
-try:
-    # Your app initialization logic here
-    pass
-except FileNotFoundError:
-    print("File not found!")
-except ValueError:
-    print("Value error occurred!")
-except Exception as e:
-    print(f"An unexpected error occurred: {e}")
-
-# Example route for the homepage
-@flask_app.route('/')
-def home():
-    # Initial redirect to onboarding if no setup is completed
-    return redirect(url_for('onboarding'))
-
-# Onboarding route (modify based on your setup logic)
-@flask_app.route('/onboarding', methods=['GET', 'POST'])
+@app.route('/onboarding', methods=['GET', 'POST'])
 def onboarding():
+    """
+    Handles onboarding.
+    """
+    global setup_complete
     if request.method == 'POST':
-        # Handle onboarding form submission
-        # For example, setting up initial configuration or password
-        pass
+        # Simulate onboarding completion
+        setup_complete = True
+        return redirect(url_for('admin_login'))
     return render_template('onboarding.html')
 
-# Admin login route (example, modify as per your requirements)
-@flask_app.route('/admin-login', methods=['GET', 'POST'])
+@app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
+    """
+    Handles admin login.
+    """
     if request.method == 'POST':
-        # Handle login logic here
-        # Check if the login credentials are correct
-        # Example: Validate username and password
         username = request.form['username']
         password = request.form['password']
-        # You would compare these with stored credentials (e.g., in a database or a file)
-        if username == 'admin' and password == 'password':
+        # Simulate login (replace with real authentication logic)
+        if username == 'admin' and password == 'admin':
+            session['logged_in'] = True
             return redirect(url_for('admin_panel'))
-        else:
-            return "Invalid credentials, please try again."
+        return "Invalid credentials", 401
     return render_template('admin_login.html')
 
-# Admin panel route (dashboard after login)
-@flask_app.route('/admin-panel')
+@app.route('/admin-panel')
 def admin_panel():
-    # Check if the admin is logged in (modify this based on your login system)
-    logged_in = True  # You will set this based on session or other logic
-    setup_incomplete = False  # Check if initial setup is completed
-    return render_template('admin_panel.html', logged_in=logged_in, setup_incomplete=setup_incomplete)
+    """
+    Admin panel after successful login.
+    """
+    if not session.get('logged_in'):
+        return redirect(url_for('admin_login'))
+    return render_template('admin_panel.html')
 
-# Main entry point for the app
+def setup_app():
+    """
+    Setup function for initializing the app.
+    """
+    # Additional setup code if needed
+    pass
+
 if __name__ == '__main__':
-    flask_app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

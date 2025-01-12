@@ -1,64 +1,56 @@
-"""
-This is the main file for the Web Application Firewall app.
-It contains the route definitions and logic for onboarding, admin login,
-and the firewall management dashboard.
-"""
-
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, session, redirect, url_for, request, render_template
 
 app = Flask(__name__)
+app.secret_key = "your_secret_key"
 
-SETUP_COMPLETE = False  # Constant in uppercase as per PEP8
+# Sample flags for onboarding completion
+setup_complete = False  # Change this to True after onboarding is completed
 
 @app.route('/')
 def index():
     """
-    Index route that checks if the setup is complete.
-    Redirects to the onboarding page if setup is incomplete.
+    Redirect root URL to /onboarding if setup is not complete.
+    Otherwise, redirect to admin login.
     """
-    if not SETUP_COMPLETE:
+    if not setup_complete:
         return redirect(url_for('onboarding'))
     return redirect(url_for('admin_login'))
-
 
 @app.route('/onboarding', methods=['GET', 'POST'])
 def onboarding():
     """
-    Onboarding route where the user sets up the initial admin password.
-    Redirects to admin login after setup is completed.
+    Handles onboarding.
     """
-    global SETUP_COMPLETE  # Refactor this if possible to avoid global variable
+    global setup_complete
     if request.method == 'POST':
-        # Handle setup form data and complete the setup
-        SETUP_COMPLETE = True
+        # Simulate onboarding completion
+        setup_complete = True
         return redirect(url_for('admin_login'))
     return render_template('onboarding.html')
-
 
 @app.route('/admin-login', methods=['GET', 'POST'])
 def admin_login():
     """
-    Admin login route to authenticate users.
-    If successful, redirects to the admin panel.
+    Handles admin login.
     """
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        # Validate credentials
-        if username == "admin" and password == "password":
+        # Simulate login (replace with real authentication logic)
+        if username == 'admin' and password == 'admin':
+            session['logged_in'] = True
             return redirect(url_for('admin_panel'))
-        else:
-            return render_template('admin_login.html', error="Invalid credentials")
+        return "Invalid credentials", 401
     return render_template('admin_login.html')
-
 
 @app.route('/admin-panel')
 def admin_panel():
     """
-    Admin panel route where the logged-in admin can manage the firewall.
+    Admin panel after successful login.
     """
-    return render_template('admin_panel.html', logged_in=True)
-
+    if not session.get('logged_in'):
+        return redirect(url_for('admin_login'))
+    return render_template('admin_panel.html')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
