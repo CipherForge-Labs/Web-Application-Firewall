@@ -1,0 +1,44 @@
+name: Build and Release Docker Image
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checkout the repository
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Set up Docker Buildx
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    # Build the Docker image
+    - name: Build Docker image
+      run: |
+        IMAGE_NAME=my-docker-image
+        IMAGE_TAG=$(date +%Y%m%d%H%M%S)  # Use a timestamp-based tag for uniqueness
+        echo "Building Docker image: $IMAGE_NAME:$IMAGE_TAG"
+        docker build . --file Dockerfile --tag $IMAGE_NAME:$IMAGE_TAG
+
+    # Save the Docker image as an artifact
+    - name: Save Docker image as an artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-image
+        path: |
+          docker-image.tar
+
+    # Save the image locally to a tar file (optional step for releases)
+    - name: Export Docker image to TAR
+      run: |
+        IMAGE_NAME=my-docker-image
+        IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+        docker save -o docker-image.tar $IMAGE_NAME:$IMAGE_TAG
