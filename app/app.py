@@ -54,3 +54,33 @@ def admin_panel():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+# In-memory storage for IP blocking/whitelisting and logs
+blocked_ips = set()  # Set to store blocked IPs
+whitelisted_ips = set()  # Set to store whitelisted IPs
+log_data = []  # List to store logs
+
+def block_ip(ip_address):
+    """Block a given IP address"""
+    blocked_ips.add(ip_address)
+    log_activity(f"Blocked IP: {ip_address}")
+
+def whitelist_ip(ip_address):
+    """Whitelist a given IP address"""
+    whitelisted_ips.add(ip_address)
+    log_activity(f"Whitelisted IP: {ip_address}")
+
+def log_activity(message):
+    """Store log activity"""
+    log_data.append(message)
+
+@app.before_request
+def check_ip_block():
+    """Check if the incoming IP is blocked or whitelisted"""
+    ip = request.remote_addr  # Get the IP address of the request
+    if ip in blocked_ips:
+        log_activity(f"Blocked request from IP: {ip}")
+        return "Your IP is blocked.", 403  # Blocked IP response
+    elif ip in whitelisted_ips:
+        log_activity(f"Whitelisted request from IP: {ip}")
+    # Otherwise, proceed normally

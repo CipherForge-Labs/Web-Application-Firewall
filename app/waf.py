@@ -57,3 +57,17 @@ def admin_panel():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+@app.route('/block-ip', methods=['POST'])
+def block_ip_route():
+    """Route to block an IP address"""
+    ip = request.form['ip_to_block']
+    block_ip(ip)
+    return redirect(url_for('admin_panel'))  # Redirect back to the admin panel
+
+@app.route('/whitelist-ip', methods=['POST'])
+def whitelist_ip_route():
+    """Route to whitelist an IP address"""
+    ip = request.form['ip_to_whitelist']
+    whitelist_ip(ip)
+    return redirect(url_for('admin_panel'))  # Redirect back to the admin panel
