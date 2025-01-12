@@ -1,20 +1,21 @@
-# Use the official Python image from the Docker Hub
+# Use the official Python image as a base
 FROM python:3.12-slim
 
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy the requirements.txt into the container
+# Copy the requirements file and install dependencies
 COPY requirements.txt .
-
-# Install the required Python packages
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all the application files into the container
+# Copy the rest of the application files
 COPY . .
 
-# Expose the port the app will run on
+# Set the FLASK_APP environment variable to the correct path
+ENV FLASK_APP=app/app.py
+
+# Expose the Flask application port
 EXPOSE 5000
 
-# Command to run the Flask app
-CMD ["python3", "app.py"]
+# Command to run the Flask application
+CMD ["flask", "run", "--host=0.0.0.0"]
