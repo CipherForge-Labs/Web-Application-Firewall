@@ -1,100 +1,63 @@
 """
-Web Application Firewall (WAF) functionality for handling requests and managing IP blocking.
+This module defines the Web Application Firewall logic.
+It includes rules for filtering requests and blocking malicious behavior.
 """
 
-import os
-import json
-from flask import request, Flask
+from flask import Flask, request, render_template, redirect, url_for, session
 
 # Initialize Flask app
 app = Flask(__name__)
+app.secret_key = "your_secret_key"
 
-# Function to load the current rules from a file
-def load_rules():
-    """
-    Load the firewall rules from a file.
-    """
-    if os.path.exists("rules.json"):
-        with open("rules.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    return []
+# Sample flags for onboarding completion
+setup_complete = False  # Change this to True after onboarding is completed
 
-# Function to save the current rules to a file
-def save_rules(rules):
+@app.route('/')
+def index():
     """
-    Save the firewall rules to a file.
+    Redirect root URL to /onboarding if setup is not complete.
+    Otherwise, redirect to admin login.
     """
-    with open("rules.json", "w", encoding="utf-8") as f:
-        json.dump(rules, f, indent=4)
+    if not setup_complete:
+        return redirect(url_for('onboarding'))
+    return redirect(url_for('admin_login'))
 
-# Function to block an IP address
-def block_ip(ip_address):
+@app.route('/onboarding', methods=['GET', 'POST'])
+def onboarding():
     """
-    Block an IP address by adding it to the rules.
+    Handles onboarding.
     """
-    rules = load_rules()
-    rules.append({"ip": ip_address, "action": "block"})
-    save_rules(rules)
+    global setup_complete
+    if request.method == 'POST':
+        # Simulate onboarding completion
+        setup_complete = True
+        return redirect(url_for('admin_login'))
+    return render_template('onboarding.html')
 
-# Function to unblock an IP address
-def unblock_ip(ip_address):
+@app.route('/admin-login', methods=['GET', 'POST'])
+def admin_login():
     """
-    Unblock an IP address by removing it from the rules.
+    Handles admin login.
     """
-    rules = load_rules()
-    rules = [rule for rule in rules if rule["ip"] != ip_address]
-    save_rules(rules)
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        # Simulate login (replace with real authentication logic)
+        if username == 'admin' and password == 'admin':
+            session['logged_in'] = True
+            return redirect(url_for('admin_panel'))
+        else:
+            return "Invalid credentials", 401
+    return render_template('admin_login.html')
 
-# Function to analyze requests and detect malicious behavior
-def analyze_request(request_data):
+@app.route('/admin-panel')
+def admin_panel():
     """
-    Analyze a request and determine if it is malicious.
-    For simplicity, this function detects SQL Injection and XSS.
+    Admin panel after successful login.
     """
-    if "DROP TABLE" in request_data or "UNION SELECT" in request_data:
-        return True  # SQL Injection detected
-    if "<script>" in request_data or "</script>" in request_data:
-        return True  # XSS detected
-    return False
+    if not session.get('logged_in'):
+        return redirect(url_for('admin_login'))
+    return render_template('admin_panel.html')
 
-# Function to handle incoming requests and block if malicious
-def handle_request():
-    """
-    Handle the incoming request, analyze it, and block the IP if malicious.
-    """
-    request_data = request.data.decode("utf-8")  # Get the request data
-    if analyze_request(request_data):
-        ip_address = request.remote_addr
-        block_ip(ip_address)
-        return "Request blocked due to malicious content", 403
-    return "Request allowed", 200
-
-# Route for handling incoming requests
-@app.route('/waf', methods=['POST'])
-def waf_route():
-    """
-    Handle the incoming request at /waf route.
-    This route processes the request data, checks for malicious behavior, 
-    and blocks the IP if necessary.
-    """
-    # Example: Getting request data (could be headers, body, etc.)
-    request_data = request.get_json()
-    
-    # Analyze the request for malicious behavior
-    result = analyze_request(request_data)
-    
-    if result.get('action') == 'block':
-        ip_address = result.get('ip')
-        block_ip(ip_address)
-        return {"message": f"IP {ip_address} blocked due to malicious behavior."}, 403
-    elif result.get('action') == 'unblock':
-        ip_address = result.get('ip')
-        unblock_ip(ip_address)
-        return {"message": f"IP {ip_address} unblocked."}, 200
-    else:
-        return {"message": "Request is clean."}, 200
-
-
-# Run the Flask app
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
