@@ -9,7 +9,7 @@ We take the security of our users and their systems seriously. The following ver
 | Version  | Supported          |
 |----------|--------------------|
 | 1.x      | ✅ unreleased      |
-| < 1.0    | ✅                 |
+| Source Code| ✅                 |
 
 ## Reporting a Vulnerability
 
