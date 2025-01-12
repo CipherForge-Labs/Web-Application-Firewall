@@ -1,32 +1,30 @@
 """
-Web Application Firewall (WAF) module.
-This module handles requests and applies basic filtering rules.
+Web Application Firewall (WAF) functionality for handling requests and managing IP blocking.
 """
 
-import json
-from flask import request
 import os
+import json
+from flask import request, Flask
 
-# File to store WAF rules
-RULES_FILE = "rules.json"
+# Initialize Flask app
+app = Flask(__name__)
 
-# Function to load rules from the rules file
+# Function to load the current rules from a file
 def load_rules():
     """
-    Load WAF rules from a JSON file.
-    Returns an empty list if the file does not exist.
+    Load the firewall rules from a file.
     """
-    if os.path.exists(RULES_FILE):
-        with open(RULES_FILE, "r", encoding="utf-8") as f:
+    if os.path.exists("rules.json"):
+        with open("rules.json", "r", encoding="utf-8") as f:
             return json.load(f)
     return []
 
-# Function to save rules to a JSON file
+# Function to save the current rules to a file
 def save_rules(rules):
     """
-    Save WAF rules to a JSON file.
+    Save the firewall rules to a file.
     """
-    with open(RULES_FILE, "w", encoding="utf-8") as f:
+    with open("rules.json", "w", encoding="utf-8") as f:
         json.dump(rules, f, indent=4)
 
 # Function to block an IP address
@@ -53,65 +51,50 @@ def analyze_request(request_data):
     Analyze a request and determine if it is malicious.
     For simplicity, this function detects SQL Injection and XSS.
     """
-    if "DROP TABLE" in request_data or "SELECT * FROM" in request_data:
-        return "SQL Injection detected"
+    if "DROP TABLE" in request_data or "UNION SELECT" in request_data:
+        return True  # SQL Injection detected
     if "<script>" in request_data or "</script>" in request_data:
-        return "XSS detected"
-    return "Request is safe"
+        return True  # XSS detected
+    return False
 
-# Function to handle requests
+# Function to handle incoming requests and block if malicious
 def handle_request():
     """
-    Handle incoming requests and apply WAF rules.
-    This function checks the request data and applies filtering rules.
+    Handle the incoming request, analyze it, and block the IP if malicious.
     """
-    ip_address = request.remote_addr
-    request_data = request.data.decode("utf-8")
-    
-    # Check if the IP is blocked
-    rules = load_rules()
-    for rule in rules:
-        if rule["ip"] == ip_address and rule["action"] == "block":
-            return "Access denied: Your IP is blocked."
-
-    # Analyze the request data for potential threats
-    result = analyze_request(request_data)
-
-    # If the request is safe, allow it; otherwise, block it
-    if result == "Request is safe":
-        return "Request allowed"
-    else:
+    request_data = request.data.decode("utf-8")  # Get the request data
+    if analyze_request(request_data):
+        ip_address = request.remote_addr
         block_ip(ip_address)
-        return f"Access denied: {result}"
+        return "Request blocked due to malicious content", 403
+    return "Request allowed", 200
 
-# Function to handle login request
-def login(request_data):
+# Route for handling incoming requests
+@app.route('/waf', methods=['POST'])
+def waf_route():
     """
-    Handle login requests.
-    Verifies the admin credentials and returns a message.
+    Handle the incoming request at /waf route.
+    This route processes the request data, checks for malicious behavior, 
+    and blocks the IP if necessary.
     """
-    password = request_data.get("password")
-    if password == "admin123":  # For simplicity, using a hardcoded password
-        return "Login successful"
-    return "Invalid password"
+    # Example: Getting request data (could be headers, body, etc.)
+    request_data = request.get_json()
+    
+    # Analyze the request for malicious behavior
+    result = analyze_request(request_data)
+    
+    if result.get('action') == 'block':
+        ip_address = result.get('ip')
+        block_ip(ip_address)
+        return {"message": f"IP {ip_address} blocked due to malicious behavior."}, 403
+    elif result.get('action') == 'unblock':
+        ip_address = result.get('ip')
+        unblock_ip(ip_address)
+        return {"message": f"IP {ip_address} unblocked."}, 200
+    else:
+        return {"message": "Request is clean."}, 200
 
-# Example route: login route
-@app.route("/login", methods=["POST"])
-def login_route():
-    """
-    Endpoint for admin login.
-    """
-    data = request.get_json()
-    return login(data)
 
-# Example route: handle requests
-@app.route("/request", methods=["POST"])
-def request_route():
-    """
-    Endpoint for handling requests.
-    """
-    data = request.get_json()
-    return handle_request()
-
+# Run the Flask app
 if __name__ == "__main__":
     app.run(debug=True)

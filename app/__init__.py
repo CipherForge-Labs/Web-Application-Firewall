@@ -1,81 +1,87 @@
 from flask import Flask, request, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
-import os
-import json
 
-app = Flask(__name__)
+def init_app():
+    """
+    Initialize the Flask application by loading configurations and setting up routes.
+    """
+    app = Flask(__name__)
 
-# Password storage location
-PASSWORD_FILE = "admin_password.txt"
+    # Load configurations
+    load_config(app)
 
-# Check if the password file exists; if not, create one
-if not os.path.exists(PASSWORD_FILE):
-    with open(PASSWORD_FILE, "w") as f:
-        f.write(generate_password_hash("admin123"))
+    # Setup routes
+    setup_routes(app)
 
-# Function to load the admin password hash from the file
-def get_admin_password():
-    with open(PASSWORD_FILE, "r") as f:
-        return f.read().strip()
+    return app
 
-# Function to verify password
-def verify_password(password):
-    return check_password_hash(get_admin_password(), password)
+def load_config(app):
+    """
+    Load configuration settings for the Flask app (e.g., from environment variables or files).
+    """
+    # Example: loading configurations from a config.py file
+    try:
+        app.config.from_pyfile('config.py')  # Ensure you have a config.py or adjust path accordingly
+    except Exception as e:
+        print(f"Error loading config: {e}")
+    
+    # You can also manually set configurations like:
+    # app.config['DEBUG'] = True  # Set debug mode directly if not using a config file
 
-# Load WAF rules from a JSON file
-def load_rules():
-    if os.path.exists("rules.json"):
-        with open("rules.json", "r") as f:
-            return json.load(f)
-    return []
+def setup_routes(app):
+    """
+    Define the application's route functions.
+    """
+    @app.route('/')
+    def home():
+        """
+        Home route.
+        """
+        return "Welcome to the home page!"
 
-# Save WAF rules to a JSON file
-def save_rules(rules):
-    with open("rules.json", "w") as f:
-        json.dump(rules, f, indent=4)
+    @app.route('/waf', methods=['POST'])
+    def waf_route():
+        """
+        Handle incoming requests at the /waf route.
+        This function analyzes the request and applies WAF rules.
+        """
+        request_data = request.get_json()  # Assuming JSON data is sent
+        if request_data:
+            action = analyze_request(request_data)
+            return jsonify({"action": action}), 200
+        return jsonify({"error": "Invalid data"}), 400
 
-# Function to add IP to the blacklist
-def block_ip(ip_address):
-    rules = load_rules()
-    rules.append({"ip": ip_address, "action": "block"})
-    save_rules(rules)
+def analyze_request(request_data):
+    """
+    Analyze a request and determine if it is malicious.
+    For simplicity, this function detects SQL Injection and XSS.
+    """
+    if detect_sql_injection(request_data):
+        return "block"
+    if detect_xss(request_data):
+        return "block"
+    return "allow"
 
-# Function to unblock an IP
-def unblock_ip(ip_address):
-    rules = load_rules()
-    rules = [rule for rule in rules if rule["ip"] != ip_address]
-    save_rules(rules)
+def detect_sql_injection(request_data):
+    """
+    Simple SQL Injection detection (could be enhanced).
+    """
+    sql_keywords = ["' OR", "'--", "';--", "DROP TABLE", "SELECT * FROM", "INSERT INTO"]
+    for keyword in sql_keywords:
+        if keyword.lower() in str(request_data).lower():
+            return True
+    return False
 
-# Endpoint for blocking IP
-@app.route("/block_ip", methods=["POST"])
-def block_ip_endpoint():
-    ip_address = request.form.get("ip_address")
-    if ip_address:
-        block_ip(ip_address)
-        return jsonify({"message": f"IP {ip_address} blocked successfully!"}), 200
-    return jsonify({"error": "IP address is required!"}), 400
+def detect_xss(request_data):
+    """
+    Simple XSS detection (could be enhanced).
+    """
+    xss_keywords = ["<script>", "</script>", "<img src=", "onerror="]
+    for keyword in xss_keywords:
+        if keyword.lower() in str(request_data).lower():
+            return True
+    return False
 
-# Endpoint for unblocking IP
-@app.route("/unblock_ip", methods=["POST"])
-def unblock_ip_endpoint():
-    ip_address = request.form.get("ip_address")
-    if ip_address:
-        unblock_ip(ip_address)
-        return jsonify({"message": f"IP {ip_address} unblocked successfully!"}), 200
-    return jsonify({"error": "IP address is required!"}), 400
-
-# Endpoint for login (admin)
-@app.route("/login", methods=["POST"])
-def login():
-    password = request.form.get("password")
-    if verify_password(password):
-        return jsonify({"message": "Login successful!"}), 200
-    return jsonify({"error": "Invalid password!"}), 401
-
-# Default route
-@app.route("/")
-def home():
-    return "Welcome to the Web Application Firewall!"
-
-if __name__ == "__main__":
+# Entry point to start the application (typically placed in a separate file like run.py)
+if __name__ == '__main__':
+    app = init_app()
     app.run(debug=True)
