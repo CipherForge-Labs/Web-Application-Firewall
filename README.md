@@ -1,4 +1,5 @@
 [![CodeQL](https://github.com/CipherForge-Labs/Web-Application-Firewall/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/CipherForge-Labs/Web-Application-Firewall/actions/workflows/github-code-scanning/codeql)
+[![Docker Image CI](https://github.com/CipherForge-Labs/Web-Application-Firewall/actions/workflows/docker-image.yml/badge.svg)](https://github.com/CipherForge-Labs/Web-Application-Firewall/actions/workflows/docker-image.yml)
 # Web Application Firewall
 
 **Web Application Firewall** (WAF) is a security solution designed to protect web applications from common web attacks such as SQL Injection, Cross-Site Scripting (XSS), and more. This project is built with Python using Flask for the GUI and is easily configurable to suit your web security needs.
