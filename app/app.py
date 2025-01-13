@@ -5,7 +5,7 @@ app.secret_key = "your_secret_key"
 
 # Sample flags for onboarding completion
 setup_complete = False  # Change this to True after onboarding is completed
-
+#todo once onboarding complete automatically changes to true
 @app.route('/')
 def index():
     """
