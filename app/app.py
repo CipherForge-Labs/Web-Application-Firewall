@@ -3,7 +3,7 @@ from flask import Flask, session, redirect, url_for, request, render_template
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
 
-# Sample flags for onboarding completion
+# Flags for onboarding completion
 setup_complete = False  # Change this to True after onboarding is completed
 
 @app.route('/')
